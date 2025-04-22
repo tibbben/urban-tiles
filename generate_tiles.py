@@ -4,7 +4,7 @@ import geopandas as gpd
 from shapely.geometry import box
 
 # --- Config ---
-ZOOM_MIN = 9
+ZOOM_MIN = 8
 ZOOM_MAX = 16
 URBAN_PATH = "data/urban_boundary.geojson"
 TILE_ROOT = "tiles"
