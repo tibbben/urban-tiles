@@ -25,7 +25,7 @@ def dry_run_tiles():
                     continue
 
                 x = x_file[:-4]  # remove '.png'
-                tile_url = f"{API_BASE_URL}/{TILE_TYPE}/{z}/{x}/{y}.png"
+                tile_url = f"{API_BASE_URL}/{TILE_TYPE}/{z}/{y}/{x}.png"
                 tile_path = os.path.join(y_path, x_file)
 
                 print(f"URL:  {tile_url}")
