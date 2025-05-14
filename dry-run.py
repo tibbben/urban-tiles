@@ -1,7 +1,9 @@
 import os
 
 # --- CONFIGURATION ---
-API_KEY = '<API KEY>'
+with open('key.txt', 'r') as key_file:
+    API_KEY = key_file.read().strip()
+
 TILE_TYPE = 'airports'      # Change to 'local', 'score', or 'traffic' if needed
 BASE_DIR = 'tiles'
 API_BASE_URL = 'https://api.howloud.com/tiles'
