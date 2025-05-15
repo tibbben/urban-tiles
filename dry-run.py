@@ -4,7 +4,7 @@ import os
 with open('key.txt', 'r') as key_file:
     API_KEY = key_file.read().strip()
 
-TILE_TYPE = 'airports'      # Change to 'local', 'score', or 'traffic' if needed
+TILE_TYPE = 'score'
 BASE_DIR = 'tiles'
 API_BASE_URL = 'https://api.howloud.com/tiles'
 
@@ -27,7 +27,7 @@ def dry_run_tiles():
                     continue
 
                 x = x_file[:-4]  # remove '.png'
-                tile_url = f"{API_BASE_URL}/{TILE_TYPE}/{z}/{y}/{x}.png"
+                tile_url = f"{API_BASE_URL}/{TILE_TYPE}/{z}/{y}/{x}.png?x-api-key={API_KEY}"
                 tile_path = os.path.join(y_path, x_file)
 
                 print(f"URL:  {tile_url}")
