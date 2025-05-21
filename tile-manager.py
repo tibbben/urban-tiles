@@ -40,77 +40,58 @@ def tile_intersects(x, y, z, geom):
     (lon1, lat1), (lon2, lat2) = tile_bounds(x, y, z)
     return geom.intersects(box(lon1, lat1, lon2, lat2))
 
-# --- MODES ---
-def dry_run():
-    print("=== Dry Run: Listing API Requests ===\n")
-    for y in os.listdir(TILE_ROOT):
-        y_path = os.path.join(TILE_ROOT, y)
-        if not os.path.isdir(y_path):
-            continue
-        for z in os.listdir(y_path):
-            z_path = os.path.join(y_path, z)
-            if not os.path.isdir(z_path):
-                continue
-            for fname in os.listdir(z_path):
-                if not fname.endswith('.png'):
-                    continue
-                x = fname[:-4]
-                url  = f"{API_BASE_URL}/{TILE_TYPE}/{z}/{y}/{x}.png?x-api-key={API_KEY}"
-                path = os.path.join(TILE_ROOT, y, z, fname)
-                print(f"URL:  {url}")
-                print(f"Save: {path}")
-                print("-" * 60)
+# --- MAIN TILE PROCESSOR ---
+def process_tiles(generate=False, request=False, max_downloads=0):
+    print("=== Processing Tiles ===")
+    if not generate and not request:
+        print("Mode: Dry Run")
+    elif generate:
+        print("Mode: Generating Skeleton")
+    else:
+        print("Mode: Downloading Tiles")
 
-def generate_skeleton():
-    print("=== Generating directory skeleton ===")
     urban = gpd.read_file(URBAN_PATH).to_crs(epsg=4326)
     urban_union = urban.unary_union
     minx, miny, maxx, maxy = urban_union.bounds
-
-    for z in range(ZOOM_MIN, ZOOM_MAX + 1):
-        print(f" Zoom {z}…")
-        x_min, y_max = latlon_to_tile(miny, minx, z)
-        x_max, y_min = latlon_to_tile(maxy, maxx, z)
-        for y in range(y_min, y_max + 1):
-            for x in range(x_min, x_max + 1):
-                if tile_intersects(x, y, z, urban_union):
-                    dir_path = os.path.join(TILE_ROOT, str(y), str(z))
-                    os.makedirs(dir_path, exist_ok=True)
-                    open(os.path.join(dir_path, f"{x}.png"), 'wb').close()
-    print("Done.")
-
-def download_tiles(max_downloads):
-    print("=== Downloading tiles ===")
     headers = {'x-api-key': API_KEY}
-    count = 0
+    download_count = 0
 
-    for y in os.listdir(TILE_ROOT):
-        y_path = os.path.join(TILE_ROOT, y)
-        if not os.path.isdir(y_path):
-            continue
-        for z in os.listdir(y_path):
-            z_path = os.path.join(y_path, z)
-            if not os.path.isdir(z_path):
-                continue
-            for fname in os.listdir(z_path):
-                if not fname.endswith('.png'):
+    for y in range(ZOOM_MIN, ZOOM_MAX + 1):  # y = zoom
+        x_min, z_max = latlon_to_tile(miny, minx, y)
+        x_max, z_min = latlon_to_tile(maxy, maxx, y)
+
+        for z in range(z_min, z_max + 1):  # z = vertical index
+            for x in range(x_min, x_max + 1):  # x = horizontal index
+                if not tile_intersects(x, z, y, urban_union):
                     continue
-                if count >= max_downloads:
-                    print(f"Reached download limit ({max_downloads}).")
-                    return
-                x = fname[:-4]
-                url  = f"{API_BASE_URL}/{TILE_TYPE}/{z}/{y}/{x}.png"
-                path = os.path.join(TILE_ROOT, y, z, fname)
-                print(f"Requesting: {url}")
-                try:
-                    resp = requests.get(url, headers=headers, params={'x-api-key': API_KEY})
-                    resp.raise_for_status()
-                    with open(path, 'wb') as f:
-                        f.write(resp.content)
-                    print(f" → Saved: {path}")
-                    count += 1
-                except Exception as e:
-                    print(f"Failed {url}: {e}")
+
+                dir_path = os.path.join(TILE_ROOT, str(y), str(z))
+                os.makedirs(dir_path, exist_ok=True)
+                file_path = os.path.join(dir_path, f"{x}.png")
+                url = f"{API_BASE_URL}/{TILE_TYPE}/{y}/{x}/{z}.png"
+
+                if generate:
+                    open(file_path, 'wb').close()
+                    print(f"Generated: {file_path}")
+                elif request:
+                    if download_count >= max_downloads:
+                        print(f"Reached max downloads: {max_downloads}")
+                        return
+                    try:
+                        print(f"Requesting: {url}")
+                        resp = requests.get(url, headers=headers, params={'x-api-key': API_KEY})
+                        resp.raise_for_status()
+                        with open(file_path, 'wb') as f:
+                            f.write(resp.content)
+                        print(f" → Saved: {file_path}")
+                        download_count += 1
+                    except Exception as e:
+                        print(f"Failed {url}: {e}")
+                else:
+                    print(f"URL:  {url}?x-api-key={API_KEY}")
+                    print(f"Path: {file_path}")
+                    print("-" * 60)
+
     print("Done.")
 
 # --- ARGPARSE SETUP ---
@@ -125,9 +106,5 @@ if __name__ == '__main__':
                    help="Limit number of downloads (only with --request)")
     args = p.parse_args()
 
-    if args.generate:
-        generate_skeleton()
-    elif args.request:
-        download_tiles(args.max_downloads)
-    else:
-        dry_run()
+    process_tiles(generate=args.generate, request=args.request, max_downloads=args.max_downloads)
+
