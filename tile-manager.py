@@ -13,7 +13,7 @@ TILE_TYPE    = 'score'
 TILE_ROOT    = 'tiles'
 URBAN_PATH   = 'data/urban_boundary.geojson'
 ZOOM_MIN     = 8
-ZOOM_MAX     = 16
+ZOOM_MAX     = 14
 
 def load_api_key():
     with open(KEY_FILE, 'r') as f:
@@ -56,19 +56,19 @@ def process_tiles(generate=False, request=False, max_downloads=0):
     headers = {'x-api-key': API_KEY}
     download_count = 0
 
-    for y in range(ZOOM_MIN, ZOOM_MAX + 1):  # y = zoom
-        x_min, z_max = latlon_to_tile(miny, minx, y)
-        x_max, z_min = latlon_to_tile(maxy, maxx, y)
+    for z in range(ZOOM_MIN, ZOOM_MAX + 1):  # z = zoom
+        x_min, y_max = latlon_to_tile(miny, minx, z)
+        x_max, y_min = latlon_to_tile(maxy, maxx, z)
 
-        for z in range(z_min, z_max + 1):  # z = vertical index
-            for x in range(x_min, x_max + 1):  # x = horizontal index
-                if not tile_intersects(x, z, y, urban_union):
+        for y in range(y_min, y_max + 1):  # z = vertical index (latitude)
+            for x in range(x_min, x_max + 1):  # x = horizontal index (Longitiude)
+                if not tile_intersects(x, y, z, urban_union):
                     continue
 
-                dir_path = os.path.join(TILE_ROOT, str(y), str(z))
+                dir_path = os.path.join(TILE_ROOT, str(z), str(x))
                 os.makedirs(dir_path, exist_ok=True)
-                file_path = os.path.join(dir_path, f"{x}.png")
-                url = f"{API_BASE_URL}/{TILE_TYPE}/{y}/{x}/{z}.png"
+                file_path = os.path.join(dir_path, f"{y}.png")
+                url = f"{API_BASE_URL}/{TILE_TYPE}/{z}/{x}/{y}.png"
 
                 if generate:
                     open(file_path, 'wb').close()
